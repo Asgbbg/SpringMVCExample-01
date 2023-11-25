@@ -1,7 +1,9 @@
 package com.example.servingwebcontent.controller;
 
+import java.text.SimpleDateFormat;
 import java.util.Optional;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.servingwebcontent.entity.CountryEntity;
+import com.example.servingwebcontent.form.CountryForm;
 import com.example.servingwebcontent.form.CountrySearchForm;
 import com.example.servingwebcontent.repository.CountryEntityMapper;
 import com.google.gson.Gson;
@@ -46,24 +49,61 @@ public class CountryController {
 		 * with the specified country code.
 		 */
 		Optional<CountryEntity> countryEntity = mapper.selectByPrimaryKey(countrySearchForm.getMstCountryCD());
-		if (countryEntity == null) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-		}
 
-		return new Gson().toJson(countryEntity.get());
+		// return code should not be 404
+		return new Gson().toJson(countryEntity.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
 	}
 
-	/*
-	 * 创建一个方法，监听/country/createCountry，
-	 * 实现根据请求的参数创建一个CountryEntity对象，并将其插入到数据库中。
-	 */
-	@PostMapping("/country/createCountry")
+	@PostMapping("/addCountry")
 	@ResponseBody
-	public String createCountry(@RequestBody CountryEntity countryEntity) {
-		// Method body goes here
-		// For example, you might save the countryEntity to the database
-		// Then return a success message or the saved entity
-		return "Country created successfully";
+	public String addCountry(@Validated CountryForm countryForm, BindingResult bindingResult) {
+		if (bindingResult.hasErrors()) {
+            return "list";
+        }
+		CountryEntity countryEntity = new CountryEntity();
+		BeanUtils.copyProperties(countryForm, countryEntity);
+		
+		// set UpdateDt
+		SimpleDateFormat sdf = new SimpleDateFormat ("yyyyMMdd");
+		String updateDtStr = sdf.format(System.currentTimeMillis());
+		long updateDtLong = Long.parseLong(updateDtStr);
+		countryEntity.setUpdatedt(updateDtLong);
+		
+		// insert countryEntity
+		Integer count = mapper.insert(countryEntity);
+		return count.toString();
+	}
+	
+	@PostMapping("/deleteCountry")
+	@ResponseBody
+	public String deleteCountry(@Validated CountryForm countryForm, BindingResult bindingResult) {
+		if (bindingResult.hasErrors()) {
+            return "list";
+        }
+		// delete countryEntity
+		// physics delete
+		Integer count = mapper.deleteByPrimaryKey(countryForm.getMstcountrycd());
+		return count.toString();
+	}
+	
+	@PostMapping("/updateCountry")
+	@ResponseBody
+	public String updateCountry(@Validated CountryForm countryForm, BindingResult bindingResult) {
+		if (bindingResult.hasErrors()) {
+            return "list";
+        }
+		CountryEntity countryEntity = new CountryEntity();
+		BeanUtils.copyProperties(countryForm, countryEntity);
+		
+		// set UpdateDt
+		SimpleDateFormat sdf = new SimpleDateFormat ("yyyyMMdd");
+		String updateDtStr = sdf.format(System.currentTimeMillis());
+		long updateDtLong = Long.parseLong(updateDtStr);
+		countryEntity.setUpdatedt(updateDtLong);
+		
+		// update countryEntity
+		Integer count = mapper.updateByPrimaryKeySelective(countryEntity);
+		return count.toString();
 	}
 
 }
